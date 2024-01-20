@@ -4,6 +4,8 @@ import Block from './components/block';
 import { v4 as uuidv4 } from 'uuid';
 import CreateArea from './components/createArea';
 import './App.css';
+import { DndProvider } from 'react-dnd';
+import { HTML5Backend } from 'react-dnd-html5-backend';
 
 function App() {
   const [blocks, setBlocks] = useState([]);
@@ -47,8 +49,14 @@ function App() {
     );
     setBlocks(updatedBlocks);
   };
-
+  const onMoveBlock = (dragIndex, hoverIndex) => {
+    const updatedBlocks = [...blocks];
+    const [removedBlock] = updatedBlocks.splice(dragIndex, 1);
+    updatedBlocks.splice(hoverIndex, 0, removedBlock);
+    setBlocks(updatedBlocks);
+  }; 
   return (
+    <DndProvider backend={HTML5Backend}>
     <div className="container">
       <div className="p-4 m-4 rounded shadow-md relative flex justify-center">
         {buttonState === 1 ? (
@@ -81,11 +89,20 @@ function App() {
         )}
       </div>
       <div className="flex flex-col">
-        {blocks.map((block) => (
-          <Block key={block.id} id={block.id} type={block.type} content={block.content} onEdit={editBlock} />
-        ))}
+      {blocks.map((block, index) => (
+            <Block
+              key={block.id}
+              id={block.id}
+              type={block.type}
+              content={block.content}
+              onEdit={editBlock}
+              index={index} // Pass the index as a prop
+              onMoveBlock={onMoveBlock} // Pass the onMoveBlock function
+            />
+          ))}
       </div>
     </div>
+    </DndProvider>
   );
 }
 

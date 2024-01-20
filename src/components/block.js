@@ -2,14 +2,14 @@ import React, { useState, useRef } from "react";
 import { Button } from 'antd';
 import HTMLReactParser from 'html-react-parser';
 import JoditEditor from 'jodit-react';
+import { useDrag, useDrop } from 'react-dnd';
 
-const Block = ({ id, type, content, onEdit }) => {
+const Block = ({ id, type, content, index, onEdit, onMoveBlock }) => {
   const [isHovered, setIsHovered] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const editor = useRef(null);
   const [editedContent, setEditedContent] = useState(content);
 
-	
   const handleEditClick = () => {
     setIsEditing(true);
     setIsHovered(false);
@@ -20,9 +20,54 @@ const Block = ({ id, type, content, onEdit }) => {
     setIsEditing(false);
   };
 
+  const [{ isDragging }, drag] = useDrag({
+    type: 'BLOCK',
+    item: { id, index },
+    collect: (monitor) => ({
+      isDragging: !!monitor.isDragging(),
+    }),
+  });
+
+  const [, drop] = useDrop({
+    accept: 'BLOCK',
+    hover: (item, monitor) => {
+      if (!editor.current) {
+        return;
+      }
+
+      const dragIndex = item.index;
+      const hoverIndex = index;
+
+      if (dragIndex === hoverIndex) {
+        return;
+      }
+
+      const hoverBoundingRect = editor.current.getBoundingClientRect();
+      const hoverMiddleY = (hoverBoundingRect.bottom - hoverBoundingRect.top) / 2;
+      const clientOffset = monitor.getClientOffset();
+      const hoverClientY = clientOffset.y - hoverBoundingRect.top;
+
+      if (dragIndex < hoverIndex && hoverClientY < hoverMiddleY) {
+        return;
+      }
+
+      if (dragIndex > hoverIndex && hoverClientY > hoverMiddleY) {
+        return;
+      }
+
+      // Perform the swap
+      onMoveBlock(dragIndex, hoverIndex);
+
+      item.index = hoverIndex;
+    },
+  });
+
+  drag(drop(editor));
+
   return (
     <div
-      className="block"
+      ref={editor}
+      className={`block ${isDragging ? 'dragging' : ''}`}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
@@ -30,7 +75,6 @@ const Block = ({ id, type, content, onEdit }) => {
         isEditing ? (
           <div>
             <JoditEditor
-              ref={editor}
               value={editedContent}
               className="text-black"
               onChange={(e) => setEditedContent(e)}
